@@ -1,0 +1,7 @@
+{
+  "hisafeUrl": "https://your-hisafe-server.com",
+  "hisafeApiVersion": "9.0.0",
+  "featureType": "PORTAL",
+  "featureKey": "your-portal-key",
+  "clientId": "your-client-id"
+}
