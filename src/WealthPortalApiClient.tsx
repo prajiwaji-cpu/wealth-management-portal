@@ -70,13 +70,13 @@ export async function getAuthorizeUrl(logout: boolean = false): Promise<string> 
 async function initAuth(signal: AbortSignal) {
   if (headers["Authorization"]) return;
 
-  const params = new URLSearchParams(location.search);
+  const params = new URLSearchParams(window.location.search);
   const state = params.get("state");
   
   if (state) {
     params.delete("state");
     const qs = params.toString();
-    history.replaceState(null, "", location.origin + location.pathname + (qs ? "?" + qs : ""));
+    window.history.replaceState(null, "", window.location.origin + window.location.pathname + (qs ? "?" + qs : ""));
     return;
   }
 
