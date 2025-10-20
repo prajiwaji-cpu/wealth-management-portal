@@ -31,26 +31,31 @@ export default function WealthPortalIntegrated() {
   const abortControllerRef = useRef<AbortController>(new AbortController());
 
   // Check authentication on mount
-  useEffect(() => {
+ useEffect(() => {
     const controller = new AbortController();
     
-    async function checkAuth() {
+    async function init() {
       try {
-        const result = await API.testAuth(controller.signal);
-        if (result === null) {
-          // Not authenticated, redirect to login
-          window.location.href = await API.getAuthorizeUrl();
-        } else {
-          setIsAuthenticating(false);
-          loadTasks(controller.signal);
+        // Remove state parameter if present
+        const params = new URLSearchParams(window.location.search);
+        const state = params.get("state");
+        
+        if (state) {
+          params.delete("state");
+          const qs = params.toString();
+          window.history.replaceState(null, "", window.location.origin + window.location.pathname + (qs ? "?" + qs : ""));
         }
+        
+        // Skip auth check, just try to load tasks directly
+        setIsAuthenticating(false);
+        loadTasks(controller.signal);
       } catch (e) {
-        console.error("Auth check failed:", e);
+        console.error("Initialization failed:", e);
         setIsAuthenticating(false);
       }
     }
     
-    checkAuth();
+    init();
     
     return () => controller.abort();
   }, []);
