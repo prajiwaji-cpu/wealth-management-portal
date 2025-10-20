@@ -138,7 +138,23 @@ export type TaskFieldData = { [fieldName: string]: unknown } & Partial<{
     id: number;
   }
 }>
+export type PortalMetadata = {
+  title?: string;
+  subtitle?: { html: string };
+  maxFileSizePerUploadBytes: number;
+  dashboardComponents: {
+    type: "list" | "gauge" | "chart" | "iframe" | "text";
+    series: {
+      id: number;
+      dataSourceId: number;
+    }[];
+  }[];
+  createButtons: { formId: number; label: string }[];
+}
 
+export async function getPortalMetadata(signal: AbortSignal): Promise<PortalMetadata> {
+  return await request("GET", "portal/metadata", signal);
+}
 export type ListResult = { 
   task_id: number; 
   fields: TaskFieldData 
