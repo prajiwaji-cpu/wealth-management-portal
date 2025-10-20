@@ -1,7 +1,7 @@
 {
-  "hisafeUrl": "${REACT_APP_HISAFE_URL}",
+  "hisafeUrl": "REACT_APP_HISAFE_URL",
   "hisafeApiVersion": "9.0.0",
   "featureType": "PORTAL",
-  "featureKey": "${REACT_APP_FEATURE_KEY}",
-  "clientId": "${REACT_APP_CLIENT_ID}"
+  "featureKey": "REACT_APP_FEATURE_KEY",
+  "clientId": "REACT_APP_CLIENT_ID"
 }
