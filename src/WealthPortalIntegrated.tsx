@@ -56,23 +56,51 @@ export default function WealthPortalIntegrated() {
   }, []);
 
   const loadTasks = async (signal: AbortSignal) => {
-    try {
-      setIsLoading(true);
-      // Load portal data with series ID for task list
-      // You'll need to replace '1' with your actual series ID from portal configuration
-      const data = await API.getPortalData(signal, [1]);
-      const seriesData = data[1];
-      
-      if (seriesData && seriesData.type === 'list') {
-        setTasks(seriesData.listResult);
-      }
-      
+  try {
+    setIsLoading(true);
+    
+    // First, get portal metadata to find series IDs
+    const metadata = await API.getPortalMetadata(signal);
+    
+    // Find all list components (these are task lists)
+    const listComponents = metadata.dashboardComponents.filter(c => c.type === 'list');
+    
+    if (listComponents.length === 0) {
+      console.error("No list components found in portal");
       setIsLoading(false);
-    } catch (e) {
-      console.error("Failed to load tasks:", e);
-      setIsLoading(false);
+      return;
     }
-  };
+    
+    // Get series IDs from all list components
+    const seriesIds = listComponents.flatMap(component => 
+      component.series.map(s => s.id)
+    );
+    
+    if (seriesIds.length === 0) {
+      console.error("No series IDs found");
+      setIsLoading(false);
+      return;
+    }
+    
+    // Load data for all series
+    const data = await API.getPortalData(signal, seriesIds);
+    
+    // Combine tasks from all series
+    const allTasks: API.ListResult[] = [];
+    for (const seriesId of seriesIds) {
+      const seriesData = data[seriesId];
+      if (seriesData && seriesData.type === 'list') {
+        allTasks.push(...seriesData.listResult);
+      }
+    }
+    
+    setTasks(allTasks);
+    setIsLoading(false);
+  } catch (e) {
+    console.error("Failed to load tasks:", e);
+    setIsLoading(false);
+  }
+};
 
   const selectTask = async (task: API.ListResult) => {
     try {
