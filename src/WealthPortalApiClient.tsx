@@ -63,8 +63,13 @@ export async function getAuthorizeUrl(logout: boolean = false): Promise<string> 
 }
 
 async function initAuth(signal: AbortSignal) {
-  if (headers["Authorization"])
+  console.log("🔐 initAuth called");
+  console.log("📋 Current Authorization header:", headers["Authorization"]);
+  
+  if (headers["Authorization"]) {
+    console.log("✅ Already have auth token, skipping");
     return;
+  }
 
   type HisafeTokens = {
     access_token: string
@@ -75,34 +80,47 @@ async function initAuth(signal: AbortSignal) {
 
   const authCode = params.get("code");
   const state = params.get("state");
+  
+  console.log("🔍 URL params - code:", authCode ? "present" : "missing", "state:", state ? "present" : "missing");
+  
   if (authCode && state) {
+    console.log("🔄 Exchanging code for token...");
+    
     // Remove from URL
     params.delete("code");
     params.delete("state");
     const qs = params.toString();
     window.history.replaceState(null, "", window.location.origin + window.location.pathname + (qs ? "?" + qs : ""));
 
-    // Exchange code for token
-    const result = await requestImpl<HisafeTokens>("POST", "oauth2/token", signal, {
-      body: JSON.stringify({
-        grant_type: "authorization_code",
-        code: authCode,
-        client_id: config.clientId,
-        code_verifier: sessionStorage[CODE_VERIFIER_SESSION_STORAGE_KEY + state],
-      }),
-      headers: {
-        "Content-Type": "application/json"
-      }
-    });
+    try {
+      // Exchange code for token
+      const result = await requestImpl<HisafeTokens>("POST", "oauth2/token", signal, {
+        body: JSON.stringify({
+          grant_type: "authorization_code",
+          code: authCode,
+          client_id: config.clientId,
+          code_verifier: sessionStorage[CODE_VERIFIER_SESSION_STORAGE_KEY + state],
+        }),
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
 
-    sessionStorage.removeItem(CODE_VERIFIER_SESSION_STORAGE_KEY + state);
-    localStorage[TOKEN_LOCAL_STORAGE_KEY] = JSON.stringify(result);
+      console.log("✅ Got token:", result);
+      sessionStorage.removeItem(CODE_VERIFIER_SESSION_STORAGE_KEY + state);
+      localStorage[TOKEN_LOCAL_STORAGE_KEY] = JSON.stringify(result);
+    } catch (e) {
+      console.error("❌ Token exchange failed:", e);
+      throw e;
+    }
   }
 
   if (localStorage[TOKEN_LOCAL_STORAGE_KEY]) {
     const { token_type, access_token } = JSON.parse(localStorage[TOKEN_LOCAL_STORAGE_KEY]) as HisafeTokens
     headers["Authorization"] = token_type + " " + access_token;
+    console.log("✅ Set Authorization header from localStorage");
   } else {
+    console.log("❌ No token in localStorage, redirecting to login");
     window.location.href = await getAuthorizeUrl();
   }
 }
