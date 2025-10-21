@@ -1,13 +1,12 @@
 // WealthPortalApiClient.tsx
-// This file handles all API communication with HiSAFE
+// Based on ApiClient (1).tsx pattern - Frontend with Bearer tokens
 
-// Configuration - These values come from your environment variables in Render
 const config = {
-  hisafeUrl: process.env.REACT_APP_HISAFE_URL || "https://your-hisafe-url.com",
+  hisafeUrl: process.env.REACT_APP_HISAFE_URL || "https://demo.highgear.app/forms/fs",
   hisafeApiVersion: "9.0.0",
   featureType: "PORTAL",
-  featureKey: process.env.REACT_APP_FEATURE_KEY || "wealth-portal",
-  clientId: process.env.REACT_APP_CLIENT_ID || "your-client-id"
+  featureKey: process.env.REACT_APP_FEATURE_KEY || "parago",
+  clientId: process.env.REACT_APP_CLIENT_ID || "c1aff4bbdb082879b8965292df919011"
 };
 
 function getHisafeApiUrl(path: string): string {
@@ -31,19 +30,15 @@ function generateRandomBase64Url(length: number) {
   return encodeBase64Url(codeVerifierRaw);
 }
 
-const TOKEN_LOCAL_STORAGE_KEY = "HISAFE_AUTH_TOKEN";
-const CODE_VERIFIER_SESSION_STORAGE_KEY = "HISAFE_CODE_VERIFIER/";
-
-const alwaysAddParams = new URLSearchParams([
-  ["featureType", config.featureType], 
-  ["feature", config.featureKey]
-]);
-
+const alwaysAddParams = new URLSearchParams([["featureType", config.featureType], ["feature", config.featureKey]]);
 const headers: Record<string, string> = {
   "Content-Type": 'application/json',
   "X-Timezone-IANA": Intl.DateTimeFormat().resolvedOptions().timeZone,
   "X-Locale": Intl.NumberFormat().resolvedOptions().locale,
 };
+
+const TOKEN_LOCAL_STORAGE_KEY = "HISAFE_AUTH_TOKEN";
+const CODE_VERIFIER_SESSION_STORAGE_KEY = "HISAFE_CODE_VERIFIER/";
 
 export async function getAuthorizeUrl(logout: boolean = false): Promise<string> {
   const codeVerifier = generateRandomBase64Url(64);
@@ -53,76 +48,104 @@ export async function getAuthorizeUrl(logout: boolean = false): Promise<string> 
   sessionStorage[CODE_VERIFIER_SESSION_STORAGE_KEY + state] = codeVerifier;
 
   const params = new URLSearchParams([
-    ["feature_type", config.featureType],
-    ["feature_key", config.featureKey],
-    ["response_type", "none"],
-    ["client_id", config.clientId],
-    ["redirect_uri", window.location.href],
-    ["code_challenge_method", "S256"],
-    ["code_challenge", codeChallenge],
-    ["state", state],
-    ["confirm", JSON.stringify(logout)],
-  ]);
+      ["feature_type", config.featureType],
+      ["feature_key", config.featureKey],
+      ["response_type", "code"],  // ← CHANGED to "code"
+      ["client_id", config.clientId],
+      ["redirect_uri", window.location.href],
+      ["code_challenge_method", "S256"],
+      ["code_challenge", codeChallenge],
+      ["state", state],
+      ["confirm", JSON.stringify(logout)],
+    ]);
 
-  return getHisafeApiUrl("oauth2/authorize?" + params);
+    return getHisafeApiUrl("oauth2/authorize?" + params);
 }
 
 async function initAuth(signal: AbortSignal) {
-  if (headers["Authorization"]) return;
+  if (headers["Authorization"])
+    return;
+
+  type HisafeTokens = {
+    access_token: string
+    token_type: "Bearer"
+  }
 
   const params = new URLSearchParams(window.location.search);
+
+  const authCode = params.get("code");
   const state = params.get("state");
-  
-  if (state) {
+  if (authCode && state) {
+    // Remove from URL
+    params.delete("code");
     params.delete("state");
     const qs = params.toString();
     window.history.replaceState(null, "", window.location.origin + window.location.pathname + (qs ? "?" + qs : ""));
-    return;
+
+    // Exchange code for token
+    const result = await requestImpl<HisafeTokens>("POST", "oauth2/token", signal, {
+      body: JSON.stringify({
+        grant_type: "authorization_code",
+        code: authCode,
+        client_id: config.clientId,
+        code_verifier: sessionStorage[CODE_VERIFIER_SESSION_STORAGE_KEY + state],
+      }),
+      headers: {
+        "Content-Type": "application/json"
+      }
+    });
+
+    sessionStorage.removeItem(CODE_VERIFIER_SESSION_STORAGE_KEY + state);
+    localStorage[TOKEN_LOCAL_STORAGE_KEY] = JSON.stringify(result);
   }
 
-  // For frontend custom presentations, we use cookie-based auth
-  // No Authorization header needed
+  if (localStorage[TOKEN_LOCAL_STORAGE_KEY]) {
+    const { token_type, access_token } = JSON.parse(localStorage[TOKEN_LOCAL_STORAGE_KEY]) as HisafeTokens
+    headers["Authorization"] = token_type + " " + access_token;
+  } else {
+    window.location.href = await getAuthorizeUrl();
+  }
 }
 
-async function request<T>(
-  method: "GET" | "POST" | "PATCH", 
-  url: string, 
-  signal: AbortSignal, 
-  otherArgs?: Partial<RequestInit>
-): Promise<T> {
+async function request<T>(method: "GET" | "POST" | "PATCH", url: string, signal: AbortSignal, otherArgs?: Partial<RequestInit>, on401?:() => T): Promise<T> {
   await initAuth(signal);
-  
+  return await requestImpl(method, url, signal, otherArgs, on401);
+}
+
+async function requestImpl<T>(method: "GET" | "POST" | "PATCH", url: string, signal: AbortSignal, otherArgs?: Partial<RequestInit>, on401?:() => T): Promise<T> {
   url += (url.includes("?") ? "&" : "?") + alwaysAddParams;
-  
   const response = await fetch(getHisafeApiUrl(url), {
     method,
     mode: "cors",
     cache: "no-cache",
     redirect: "follow",
-    
     referrerPolicy: 'no-referrer',
     signal,
+    // NO credentials: "include" - using Bearer token instead
     ...otherArgs,
     headers: {
       ...headers,
       ...(otherArgs?.headers)
     }
   });
-
+  
   if (response.status >= 200 && response.status <= 299) {
     return await response.json() as T;
   } else if (response.status === 401) {
     window.location.href = await getAuthorizeUrl();
+    if (on401)
+      return on401();
     throw new Error("Unauthorized - redirecting to login");
   } else {
     let message = await response.text();
     if (message[0] === "{") {
       const jsonValue: any = JSON.parse(message);
-      if (jsonValue.message) message = jsonValue.message;
+      if (jsonValue.message)
+        message = jsonValue.message;
     }
-    
-    console.error("Request failed with " + response.status, message);
-    throw new Error(`Request failed: ${message}`);
+
+    console.error("Request failed with " + response.status, message, response);
+    throw new Error(`Request failed with ${response.status}`);
   }
 }
 
@@ -138,23 +161,7 @@ export type TaskFieldData = { [fieldName: string]: unknown } & Partial<{
     id: number;
   }
 }>
-export type PortalMetadata = {
-  title?: string;
-  subtitle?: { html: string };
-  maxFileSizePerUploadBytes: number;
-  dashboardComponents: {
-    type: "list" | "gauge" | "chart" | "iframe" | "text";
-    series: {
-      id: number;
-      dataSourceId: number;
-    }[];
-  }[];
-  createButtons: { formId: number; label: string }[];
-}
 
-export async function getPortalMetadata(signal: AbortSignal): Promise<PortalMetadata> {
-  return await request("GET", "portal/metadata", signal);
-}
 export type ListResult = { 
   task_id: number; 
   fields: TaskFieldData 
@@ -170,6 +177,20 @@ export type PortalDataValues = {
   [seriesId: number]: SeriesDataValues | undefined 
 };
 
+export type PortalMetadata = {
+  title?: string;
+  subtitle?: { html: string };
+  maxFileSizePerUploadBytes: number;
+  dashboardComponents: {
+    type: "list" | "gauge" | "chart" | "iframe" | "text";
+    series: {
+      id: number;
+      dataSourceId: number;
+    }[];
+  }[];
+  createButtons: { formId: number; label: string }[];
+}
+
 export type TaskMetadata = {
   initialState: TaskFieldData;
   formId: number;
@@ -180,11 +201,15 @@ export type TaskMetadata = {
 // API Functions
 export async function testAuth(signal: AbortSignal): Promise<SelfResult | null> {
   try {
-    return await request("GET", "self", signal);
+    return await request("GET", "self", signal, {}, () => null);
   } catch (e) {
     console.error("Auth test failed:", e);
     return null;
   }
+}
+
+export async function getPortalMetadata(signal: AbortSignal): Promise<PortalMetadata> {
+  return await request("GET", "portal/metadata", signal);
 }
 
 export async function getPortalData(signal: AbortSignal, seriesIds: number[]): Promise<PortalDataValues> {
@@ -214,15 +239,19 @@ export async function editTaskData(
 }
 
 export async function uploadFile(signal: AbortSignal, file: File): Promise<string> {
+  await initAuth(signal);
+  
   const formData = new FormData();
   formData.append('file', file);
   
   const response = await fetch(getHisafeApiUrl("file-blob?" + alwaysAddParams), {
     method: "POST",
     mode: "cors",
-    
     signal,
-    body: formData
+    body: formData,
+    headers: {
+      "Authorization": headers["Authorization"]  // Include Bearer token
+    }
   });
   
   if (response.ok) {
