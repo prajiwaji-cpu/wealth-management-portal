@@ -99,6 +99,7 @@ async function request<T>(
     mode: "cors",
     cache: "no-cache",
     redirect: "follow",
+    credentials: "include",
     referrerPolicy: 'no-referrer',
     signal,
     ...otherArgs,
@@ -219,6 +220,7 @@ export async function uploadFile(signal: AbortSignal, file: File): Promise<strin
   const response = await fetch(getHisafeApiUrl("file-blob?" + alwaysAddParams), {
     method: "POST",
     mode: "cors",
+    credentials: "include",
     signal,
     body: formData
   });
