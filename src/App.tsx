@@ -1,8 +1,5 @@
-import React from 'react';
-import WealthPortalIntegrated from './WealthPortalIntegrated';
+import FieldOptionsInspector from './FieldOptionsInspector';
 
 function App() {
-  return <WealthPortalIntegrated />;
+  return <FieldOptionsInspector />;
 }
-
-export default App;
