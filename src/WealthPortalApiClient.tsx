@@ -208,12 +208,94 @@ export type PortalMetadata = {
   }[];
   createButtons: { formId: number; label: string }[];
 }
+// Added complete type definitions for TaskMetadata
+export type TaskFieldLayout = {
+  topMargin: number;
+  leftMargin: number;
+  rightMargin: number;
+  leftAlignmentGroupId: number;
+  width: number;
+  height: number | null;
+  fillTab: boolean;
+  labelSide: string | null;
+  hideLabel: boolean;
+}
 
+export type TaskField = {
+  elementId: number;
+  elementType: string;
+  elementInfo: {
+    fieldName: string;
+    label: string;
+    isRequired: boolean;
+    readonly: boolean;
+    displayType: string;
+    displayOrientation?: string;
+    dataType?: string;
+    numericConfig?: {
+      isRollup: boolean;
+      isFormattedNumber: boolean;
+      enforcedDecimalPlaces: number;
+      requireTrailingZeros: boolean;
+    };
+    textboxConfig?: {
+      mask: string;
+      hint: string;
+    };
+    maxLength?: number;
+    isSensitive: boolean;
+    isCustom: boolean;
+    options?: {
+      value: string;
+      isHeader: boolean;
+    }[];
+    signatureConfig?: {
+      canRecordAsLoggedInUser: boolean;
+      canSpecifySignerName: boolean;
+    };
+    displayName: string;
+    isRequiredBeforeClose: boolean;
+  };
+  layout: TaskFieldLayout;
+}
+
+export type TaskFormTab = {
+  heading: string;
+  elements: TaskField[];
+}
+
+export type TaskFormLayout = {
+  useLegacyLayout: boolean;
+  width: number;
+  name: string;
+  tabs: TaskFormTab[];
+  statuses: {
+    id: number;
+    name: string;
+    type: "Open" | "InProgress" | "Closed";
+    isDeleted: boolean;
+  }[];
+  supportsBothTasksAndProjects: boolean;
+}
 export type TaskMetadata = {
+  readonly: boolean;
   initialState: TaskFieldData;
+  initialDynamicElementState?: {
+    visibleFields: string[];
+    dependencies: string[];
+    visibleElements: number[];
+    displayText: { [key: string]: string };
+  };
   formId: number;
   maxFileSizePerUploadBytes: number;
+  layout: TaskFormLayout;  // ← This is the key line that was missing!
   editSessionToken: string;
+  saveButtons?: {
+    id: number;
+    text: string;
+    color: string;
+    continueViewingRecordAfterSave: boolean;
+  }[];
 }
 
 // API Functions
