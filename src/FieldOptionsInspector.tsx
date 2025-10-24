@@ -49,8 +49,9 @@ export default function FieldOptionsInspector() {
       console.log("📋 TASK METADATA:", metadata);
       console.log("📝 FIELD NAMES AND OPTIONS:");
       metadata.layout.tabs.forEach((tab: any) => {
-        console.log(`\n📁 Tab: ${tab.heading}`);
-        tab.fields.forEach((field: any) => {
+  console.log(`\n📁 Tab: ${tab.heading}`);
+  tab.elements.forEach((element: any) => {
+    const field = element.elementInfo;
           console.log(`\n  🔹 Field: ${field.fieldName}`);
           console.log(`     Display Name: ${field.displayName}`);
           console.log(`     Type: ${field.displayType}`);
@@ -129,7 +130,8 @@ export default function FieldOptionsInspector() {
   const otherFields: any[] = [];
   
   taskMetadata.layout.tabs.forEach((tab: any) => {
-    tab.fields.forEach((field: any) => {
+  tab.elements.forEach((element: any) => {
+    const field = element.elementInfo;
       const fieldWithTab = { ...field, tabName: tab.heading };
       if (field.options && field.options.length > 0) {
         fieldsWithOptions.push(fieldWithTab);
