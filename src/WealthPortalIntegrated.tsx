@@ -31,71 +31,70 @@ export default function WealthPortalIntegrated() {
   const abortControllerRef = useRef<AbortController>(new AbortController());
 
   // Check authentication on mount
-useEffect(() => {
-  const controller = new AbortController();
-  
-  async function init() {
-    try {
-      // Don't remove state here - let initAuth handle it!
-      setIsAuthenticating(false);
-      loadTasks(controller.signal);
-    } catch (e) {
-      console.error("Initialization failed:", e);
-      setIsAuthenticating(false);
-    }
-  }
-  
-  init();
-  
-  return () => controller.abort();
-}, []);
-
-  const loadTasks = async (signal: AbortSignal) => {
-  try {
-    setIsLoading(true);
+  useEffect(() => {
+    const controller = new AbortController();
     
-    // First, get portal metadata to find series IDs
-    const metadata = await API.getPortalMetadata(signal);
-    
-    // Find all list components (these are task lists)
-    const listComponents = metadata.dashboardComponents.filter(c => c.type === 'list');
-    
-    if (listComponents.length === 0) {
-      console.error("No list components found in portal");
-      setIsLoading(false);
-      return;
-    }
-    
-    // Get series IDs from all list components
-    const seriesIds = listComponents.flatMap(component => 
-      component.series.map(s => s.id)
-    );
-    
-    if (seriesIds.length === 0) {
-      console.error("No series IDs found");
-      setIsLoading(false);
-      return;
-    }
-    
-    // Load data for all series
-    const data = await API.getPortalData(signal, seriesIds);
-    
-    // Combine tasks from all series
-    const allTasks: API.ListResult[] = [];
-    for (const seriesId of seriesIds) {
-      const seriesData = data[seriesId];
-      if (seriesData && seriesData.type === 'list') {
-        allTasks.push(...seriesData.listResult);
+    async function init() {
+      try {
+        setIsAuthenticating(false);
+        loadTasks(controller.signal);
+      } catch (e) {
+        console.error("Initialization failed:", e);
+        setIsAuthenticating(false);
       }
     }
     
-    setTasks(allTasks);
-    setIsLoading(false);
-  } catch (e) {
-    console.error("Failed to load tasks:", e);
-    setIsLoading(false);
-  }
-};
+    init();
+    
+    return () => controller.abort();
+  }, []);
+
+  const loadTasks = async (signal: AbortSignal) => {
+    try {
+      setIsLoading(true);
+      
+      // First, get portal metadata to find series IDs
+      const metadata = await API.getPortalMetadata(signal);
+      
+      // Find all list components (these are task lists)
+      const listComponents = metadata.dashboardComponents.filter(c => c.type === 'list');
+      
+      if (listComponents.length === 0) {
+        console.error("No list components found in portal");
+        setIsLoading(false);
+        return;
+      }
+      
+      // Get series IDs from all list components
+      const seriesIds = listComponents.flatMap(component => 
+        component.series.map(s => s.id)
+      );
+      
+      if (seriesIds.length === 0) {
+        console.error("No series IDs found");
+        setIsLoading(false);
+        return;
+      }
+      
+      // Load data for all series
+      const data = await API.getPortalData(signal, seriesIds);
+      
+      // Combine tasks from all series
+      const allTasks: API.ListResult[] = [];
+      for (const seriesId of seriesIds) {
+        const seriesData = data[seriesId];
+        if (seriesData && seriesData.type === 'list') {
+          allTasks.push(...seriesData.listResult);
+        }
+      }
+      
+      setTasks(allTasks);
+      setIsLoading(false);
+    } catch (e) {
+      console.error("Failed to load tasks:", e);
+      setIsLoading(false);
+    }
+  };
 
   const selectTask = async (task: API.ListResult) => {
     try {
@@ -371,7 +370,7 @@ useEffect(() => {
     );
   }
 
-  // Render the form (same as before, just with integrated API)
+  // Render the complete form with all fields
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100">
       <div className="bg-blue-900 text-white py-6 shadow-lg">
@@ -392,13 +391,350 @@ useEffect(() => {
 
       <div className="max-w-4xl mx-auto px-6 py-8">
         <div className="bg-white rounded-lg shadow-lg p-8">
-          {/* Rest of the form JSX stays the same */}
-          {/* ... (include all form fields from previous component) ... */}
-          
+          {/* Verification Method Selection */}
+          <div className="mb-8">
+            <h2 className="text-2xl font-semibold text-gray-800 mb-4">Select Verification Method</h2>
+            <p className="text-gray-600 mb-4">
+              Choose one of the following methods to verify your qualified purchaser status:
+            </p>
+            
+            <div className="space-y-4">
+              <label className="flex items-start p-4 border-2 rounded-lg cursor-pointer hover:bg-blue-50 transition-colors"
+                     style={{ borderColor: verificationMethod === 'A' ? '#1e40af' : '#e5e7eb' }}>
+                <input
+                  type="radio"
+                  name="verificationMethod"
+                  value="A"
+                  checked={verificationMethod === 'A'}
+                  onChange={(e) => {
+                    setVerificationMethod(e.target.value);
+                    setErrors(prev => ({ ...prev, verificationMethod: '' }));
+                  }}
+                  className="mt-1 mr-3"
+                />
+                <div>
+                  <div className="font-semibold text-gray-800">Method A: Revenue & Assets</div>
+                  <div className="text-sm text-gray-600 mt-1">
+                    Annual revenue exceeds $5,000,000 and assets exceed $25,000,000
+                  </div>
+                </div>
+              </label>
+
+              <label className="flex items-start p-4 border-2 rounded-lg cursor-pointer hover:bg-blue-50 transition-colors"
+                     style={{ borderColor: verificationMethod === 'B' ? '#1e40af' : '#e5e7eb' }}>
+                <input
+                  type="radio"
+                  name="verificationMethod"
+                  value="B"
+                  checked={verificationMethod === 'B'}
+                  onChange={(e) => {
+                    setVerificationMethod(e.target.value);
+                    setErrors(prev => ({ ...prev, verificationMethod: '' }));
+                  }}
+                  className="mt-1 mr-3"
+                />
+                <div>
+                  <div className="font-semibold text-gray-800">Method B: Net Worth</div>
+                  <div className="text-sm text-gray-600 mt-1">
+                    Net worth exceeds $25,000,000
+                  </div>
+                </div>
+              </label>
+            </div>
+            {errors.verificationMethod && (
+              <div className="flex items-center text-red-600 mt-2">
+                <AlertCircle className="w-4 h-4 mr-2" />
+                <span className="text-sm">{errors.verificationMethod}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Method A Fields */}
+          {verificationMethod === 'A' && (
+            <div className="mb-8 p-6 bg-blue-50 rounded-lg">
+              <h3 className="text-xl font-semibold text-gray-800 mb-4">Method A: Financial Details</h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Annual Revenue <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-3 text-gray-500">$</span>
+                    <input
+                      type="text"
+                      value={formData.annualRevenue}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/[^0-9.]/g, '');
+                        setFormData(prev => ({ ...prev, annualRevenue: value }));
+                        setErrors(prev => ({ ...prev, annualRevenue: '' }));
+                      }}
+                      className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="5,000,000"
+                    />
+                  </div>
+                  {errors.annualRevenue && (
+                    <div className="flex items-center text-red-600 mt-2">
+                      <AlertCircle className="w-4 h-4 mr-2" />
+                      <span className="text-sm">{errors.annualRevenue}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Fiscal Year End <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.fiscalYearEnd}
+                    onChange={(e) => {
+                      setFormData(prev => ({ ...prev, fiscalYearEnd: e.target.value }));
+                      setErrors(prev => ({ ...prev, fiscalYearEnd: '' }));
+                    }}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  {errors.fiscalYearEnd && (
+                    <div className="flex items-center text-red-600 mt-2">
+                      <AlertCircle className="w-4 h-4 mr-2" />
+                      <span className="text-sm">{errors.fiscalYearEnd}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Method B Fields */}
+          {verificationMethod === 'B' && (
+            <div className="mb-8 p-6 bg-blue-50 rounded-lg">
+              <h3 className="text-xl font-semibold text-gray-800 mb-4">Method B: Net Worth</h3>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Current Net Worth <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-3 text-gray-500">$</span>
+                  <input
+                    type="text"
+                    value={formData.currentNetWorth}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/[^0-9.]/g, '');
+                      setFormData(prev => ({ ...prev, currentNetWorth: value }));
+                      setErrors(prev => ({ ...prev, currentNetWorth: '' }));
+                    }}
+                    className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="25,000,000"
+                  />
+                </div>
+                {errors.currentNetWorth && (
+                  <div className="flex items-center text-red-600 mt-2">
+                    <AlertCircle className="w-4 h-4 mr-2" />
+                    <span className="text-sm">{errors.currentNetWorth}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Financial Statement Date */}
+          {verificationMethod && (
+            <div className="mb-8">
+              <h3 className="text-xl font-semibold text-gray-800 mb-4">Supporting Documentation</h3>
+              
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Financial Statement Date <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  value={formData.financialStatementDate}
+                  onChange={(e) => {
+                    setFormData(prev => ({ ...prev, financialStatementDate: e.target.value }));
+                    setErrors(prev => ({ ...prev, financialStatementDate: '' }));
+                  }}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <p className="text-sm text-gray-500 mt-1">
+                  Date of the financial statements you're uploading
+                </p>
+                {errors.financialStatementDate && (
+                  <div className="flex items-center text-red-600 mt-2">
+                    <AlertCircle className="w-4 h-4 mr-2" />
+                    <span className="text-sm">{errors.financialStatementDate}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Financial Statements Upload */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Financial Statements <span className="text-red-500">*</span>
+                </label>
+                <p className="text-sm text-gray-600 mb-3">
+                  Upload your audited or reviewed financial statements
+                </p>
+                
+                {!formData.financialStatementsFile ? (
+                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                    <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                    <span className="text-sm text-gray-600">Click to upload financial statements</span>
+                    <span className="text-xs text-gray-500 mt-1">PDF, DOC, or DOCX</span>
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept=".pdf,.doc,.docx"
+                      onChange={(e) => handleFileUpload('financialStatements', e)}
+                    />
+                  </label>
+                ) : (
+                  <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-center">
+                      <FileText className="w-5 h-5 text-green-600 mr-3" />
+                      <div>
+                        <div className="font-medium text-gray-800">{formData.financialStatementsFile.name}</div>
+                        <div className="text-sm text-gray-500">
+                          {(formData.financialStatementsFile.size / 1024 / 1024).toFixed(2)} MB
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => removeFile('financialStatements')}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                )}
+                {errors.financialStatements && (
+                  <div className="flex items-center text-red-600 mt-2">
+                    <AlertCircle className="w-4 h-4 mr-2" />
+                    <span className="text-sm">{errors.financialStatements}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* CPA Letter Upload */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  CPA Certification Letter <span className="text-red-500">*</span>
+                </label>
+                <p className="text-sm text-gray-600 mb-3">
+                  Upload a letter from your CPA certifying the information
+                </p>
+                
+                {!formData.cpaLetterFile ? (
+                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                    <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                    <span className="text-sm text-gray-600">Click to upload CPA letter</span>
+                    <span className="text-xs text-gray-500 mt-1">PDF, DOC, or DOCX</span>
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept=".pdf,.doc,.docx"
+                      onChange={(e) => handleFileUpload('cpaLetter', e)}
+                    />
+                  </label>
+                ) : (
+                  <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-center">
+                      <FileText className="w-5 h-5 text-green-600 mr-3" />
+                      <div>
+                        <div className="font-medium text-gray-800">{formData.cpaLetterFile.name}</div>
+                        <div className="text-sm text-gray-500">
+                          {(formData.cpaLetterFile.size / 1024 / 1024).toFixed(2)} MB
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => removeFile('cpaLetter')}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                )}
+                {errors.cpaLetter && (
+                  <div className="flex items-center text-red-600 mt-2">
+                    <AlertCircle className="w-4 h-4 mr-2" />
+                    <span className="text-sm">{errors.cpaLetter}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Certification & Signature */}
+          {verificationMethod && (
+            <div className="mb-8">
+              <h3 className="text-xl font-semibold text-gray-800 mb-4">Certification & Signature</h3>
+              
+              <div className="mb-6">
+                <label className="flex items-start p-4 bg-gray-50 rounded-lg cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.certificationChecked}
+                    onChange={(e) => {
+                      setFormData(prev => ({ ...prev, certificationChecked: e.target.checked }));
+                      setErrors(prev => ({ ...prev, certificationChecked: '' }));
+                    }}
+                    className="mt-1 mr-3"
+                  />
+                  <div className="text-sm text-gray-700">
+                    I certify that the information provided above is true and accurate to the best of my knowledge. 
+                    I understand that providing false information may result in legal consequences and immediate 
+                    termination of my fund membership.
+                  </div>
+                </label>
+                {errors.certificationChecked && (
+                  <div className="flex items-center text-red-600 mt-2">
+                    <AlertCircle className="w-4 h-4 mr-2" />
+                    <span className="text-sm">{errors.certificationChecked}</span>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Signature <span className="text-red-500">*</span>
+                </label>
+                <p className="text-sm text-gray-600 mb-3">
+                  Please sign in the box below
+                </p>
+                <div className="border-2 border-gray-300 rounded-lg overflow-hidden">
+                  <canvas
+                    ref={signatureRef}
+                    width={600}
+                    height={200}
+                    onMouseDown={startDrawing}
+                    onMouseMove={draw}
+                    onMouseUp={stopDrawing}
+                    onMouseLeave={stopDrawing}
+                    className="w-full cursor-crosshair bg-white"
+                  />
+                </div>
+                <button
+                  onClick={clearSignature}
+                  className="mt-2 text-sm text-blue-600 hover:text-blue-700"
+                >
+                  Clear Signature
+                </button>
+                {errors.signature && (
+                  <div className="flex items-center text-red-600 mt-2">
+                    <AlertCircle className="w-4 h-4 mr-2" />
+                    <span className="text-sm">{errors.signature}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Submit Button */}
           <div className="flex justify-end">
             <button
               onClick={handleSubmit}
-              disabled={isSubmitting}
+              disabled={isSubmitting || !verificationMethod}
               className="px-8 py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold rounded-lg shadow-lg transition-colors flex items-center"
             >
               <CheckCircle className="w-5 h-5 mr-2" />
