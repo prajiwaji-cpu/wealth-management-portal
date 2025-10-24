@@ -113,7 +113,7 @@ useEffect(() => {
           fiscalYearEnd: state.fiscal_year_end || '',
           currentNetWorth: state.current_net_worth || '',
           financialStatementDate: state.financial_statement_date || '',
-          certificationChecked: state.certification_checked || false
+          certificationChecked: state.Certify_Information || false
         }));
         
         if (state.verification_method) {
@@ -223,11 +223,11 @@ useEffect(() => {
       // Prepare field data to submit
       // Note: Field names must match your HiSAFE form field names
       const fields: Record<string, any> = {
-        verification_method: verificationMethod,
-        financial_statement_date: formData.financialStatementDate,
-        financial_statements: formData.financialStatementsBlobId,
-        cpa_certification_letter: formData.cpaLetterBlobId,
-        certification_checked: formData.certificationChecked,
+        Way_to_Verify: verificationMethod,
+        Financial_Statement_Date: formData.financialStatementDate,
+        Financial_Statements: formData.financialStatementsBlobId,
+        CPA_Certification: formData.cpaLetterBlobId,
+        Certify_Information: formData.certificationChecked,
         signature: formData.signatureData
       };
 
